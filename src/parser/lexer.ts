@@ -1,3 +1,5 @@
+import { Location } from '../ast/types';
+
 export enum TokenType {
   // Literals
   STRING = 'STRING',
@@ -17,6 +19,7 @@ export enum TokenType {
   PIPE = '|>',
   ARROW = '->',
   FAT_ARROW = '=>',
+  EQUALS = '=',
 
   // Delimiters
   LPAREN = '(',
@@ -83,6 +86,7 @@ export class Lexer {
       case ':': return this.makeToken(TokenType.COLON, char);
       case '.': return this.makeToken(TokenType.DOT, char);
       case '@': return this.makeToken(TokenType.AT, char);
+      case '=': return this.makeToken(TokenType.EQUALS, char);
       case '"': return this.scanString();
       default:
         if (this.isDigit(char)) {
@@ -96,7 +100,6 @@ export class Lexer {
   }
 
   private scanTemplate(): Token {
-    const start = this.position - 3;
     let value = '';
 
     while (this.position < this.input.length && !this.match('"""')) {

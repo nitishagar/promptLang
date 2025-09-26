@@ -1,5 +1,4 @@
 import { Parser } from '../src/parser/parser';
-import { ASTNode } from '../src/ast/types';
 
 // Example 1: Simple literal
 const example1 = `"Hello World"`;
@@ -41,7 +40,7 @@ function testParser(name: string, input: string) {
     const ast = parser.parse();
     console.log('AST:', JSON.stringify(ast, null, 2));
   } catch (error) {
-    console.error('Error:', error.message);
+    console.error('Error:', (error as Error).message);
   }
 }
 

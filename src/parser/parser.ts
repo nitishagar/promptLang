@@ -157,7 +157,7 @@ export class Parser {
 
     do {
       const name = this.consume(TokenType.IDENTIFIER, "Expected binding name").value;
-      this.consume(TokenType.ARROW, "Expected '=' after binding name");
+      this.consume(TokenType.EQUALS, "Expected '=' after binding name");
       const value = this.parseExpression();
       bindings.push({ name, value });
     } while (this.match(TokenType.COMMA));
