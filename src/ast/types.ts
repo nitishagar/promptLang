@@ -80,12 +80,32 @@ export interface TypeAnnotation {
   location: Location;
 }
 
-// Type system (basic for Phase 1)
+// Basic Type system for AST (will be extended in type checker)
 export type Type =
-  | { kind: 'primitive'; name: 'string' | 'number' | 'boolean' }
-  | { kind: 'prompt'; inner: Type }
-  | { kind: 'function'; params: Type[]; returns: Type }
-  | { kind: 'any' };
+  | { kind: 'primitive'; name: 'string' | 'number' | 'boolean' | 'null' }
+  | { kind: 'prompt'; input: Type; output: Type; model?: string; temperature?: number }
+  | { kind: 'function'; params: ParameterType[]; returns: Type; effects?: string[] }
+  | { kind: 'union'; types: Type[] }
+  | { kind: 'intersection'; types: Type[] }
+  | { kind: 'list'; element: Type; minLength?: number; maxLength?: number }
+  | { kind: 'record'; fields: RecordField[]; open?: boolean }
+  | { kind: 'dynamic'; constraint?: Type }
+  | { kind: 'any' }
+  | { kind: 'never' };
+
+export interface ParameterType {
+  name: string;
+  type: Type;
+  optional?: boolean;
+  default?: any;
+}
+
+export interface RecordField {
+  name: string;
+  type: Type;
+  optional?: boolean;
+  description?: string;
+}
 
 export interface Location {
   line: number;

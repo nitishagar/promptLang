@@ -20,6 +20,12 @@ export enum TokenType {
   ARROW = '->',
   FAT_ARROW = '=>',
   EQUALS = '=',
+  PLUS = '+',
+  MINUS = '-',
+  ASTERISK = '*',
+  SLASH = '/',
+  AND = '&',
+  QUESTION = '?',
 
   // Delimiters
   LPAREN = '(',
@@ -87,6 +93,10 @@ export class Lexer {
       case '.': return this.makeToken(TokenType.DOT, char);
       case '@': return this.makeToken(TokenType.AT, char);
       case '=': return this.makeToken(TokenType.EQUALS, char);
+      case '+': return this.makeToken(TokenType.PLUS, char);
+      case '-': return this.makeToken(TokenType.MINUS, char);
+      case '*': return this.makeToken(TokenType.ASTERISK, char);
+      case '/': return this.makeToken(TokenType.SLASH, char);
       case '"': return this.scanString();
       default:
         if (this.isDigit(char)) {

@@ -217,23 +217,153 @@ export class Parser {
   }
 
   private parseType(): AST.Type {
-    const typeName = this.consume(TokenType.IDENTIFIER, "Expected type name").value;
+    // For now, implement a basic version that supports extended types
+    // We'll implement more sophisticated type parsing in a later phase
+    
+    if (this.check(TokenType.LPAREN) && this.peekAhead(TokenType.IDENTIFIER) && this.getTokenAfterAhead(TokenType.COLON)) {
+      // Function type: (param: Type) -> ReturnType
+      this.advance(); // consume '('
+      const params: AST.ParameterType[] = [];
+      
+      if (!this.check(TokenType.RPAREN)) {
+        do {
+          const paramName = this.consume(TokenType.IDENTIFIER, "Expected parameter name").value;
+          this.consume(TokenType.COLON, "Expected ':' after parameter name");
+          const paramType = this.parseType();
+          
+          // Check if it's optional with '?'
+          let optional = false;
+          if (this.match(TokenType.QUESTION)) {
+            optional = true;
+          }
+          
+          params.push({
+            name: paramName,
+            type: paramType,
+            optional
+          });
+        } while (this.match(TokenType.COMMA));
+      }
+      
+      this.consume(TokenType.RPAREN, "Expected ')' after parameters");
+      this.consume(TokenType.ARROW, "Expected '->' after parameters");
+      const returnType = this.parseType();
+      
+      return {
+        kind: 'function',
+        params,
+        returns: returnType
+      };
+    } else if (this.check(TokenType.IDENTIFIER)) {
+      const typeName = this.consume(TokenType.IDENTIFIER, "Expected type name").value;
 
-    switch (typeName) {
-      case 'string':
-      case 'number':
-      case 'boolean':
-        return { kind: 'primitive', name: typeName };
-      case 'prompt':
-        if (this.match(TokenType.LBRACKET)) {
-          const inner = this.parseType();
-          this.consume(TokenType.RBRACKET, "Expected ']' after type parameter");
-          return { kind: 'prompt', inner };
-        }
-        return { kind: 'prompt', inner: { kind: 'any' } };
-      default:
-        return { kind: 'any' };
+      switch (typeName) {
+        case 'string':
+        case 'number':
+        case 'boolean':
+        case 'null':
+          return { kind: 'primitive', name: typeName as 'string' | 'number' | 'boolean' | 'null' };
+        
+        case 'prompt':
+          if (this.match(TokenType.LBRACKET)) {
+            this.consume(TokenType.LPAREN, "Expected '(' after prompt[");
+            const inputType = this.parseType();
+            this.consume(TokenType.COMMA, "Expected ',' after input type");
+            const outputType = this.parseType();
+            this.consume(TokenType.RPAREN, "Expected ')' after types");
+            let model: string | undefined;
+            let temperature: number | undefined;
+            
+            // Optional model and temperature
+            if (this.match(TokenType.COMMA)) {
+              if (this.check(TokenType.STRING)) {
+                model = this.advance().value;
+              }
+              if (this.match(TokenType.COMMA)) {
+                if (this.check(TokenType.NUMBER)) {
+                  temperature = parseFloat(this.advance().value);
+                }
+              }
+            }
+            this.consume(TokenType.RBRACKET, "Expected ']' after prompt parameters");
+            
+            return { 
+              kind: 'prompt', 
+              input: inputType,
+              output: outputType,
+              model,
+              temperature
+            };
+          }
+          return { kind: 'prompt', input: { kind: 'any' }, output: { kind: 'any' } };
+        
+        case 'list':
+          if (this.match(TokenType.LBRACKET)) {
+            const elementType = this.parseType();
+            this.consume(TokenType.RBRACKET, "Expected ']' after element type");
+            return { kind: 'list', element: elementType };
+          }
+          return { kind: 'list', element: { kind: 'any' } };
+        
+        case 'record':
+          if (this.match(TokenType.LBRACE)) {
+            const fields: AST.RecordField[] = [];
+            
+            if (!this.check(TokenType.RBRACE)) {
+              do {
+                const fieldName = this.consume(TokenType.IDENTIFIER, "Expected field name").value;
+                this.consume(TokenType.COLON, "Expected ':' after field name");
+                const fieldType = this.parseType();
+                
+                let optional = false;
+                if (this.match(TokenType.QUESTION)) {
+                  optional = true;
+                }
+                
+                fields.push({
+                  name: fieldName,
+                  type: fieldType,
+                  optional
+                });
+              } while (this.match(TokenType.COMMA));
+            }
+            
+            this.consume(TokenType.RBRACE, "Expected '}' after record fields");
+            return { kind: 'record', fields };
+          }
+          return { kind: 'record', fields: [] };
+        
+        case 'dynamic':
+          if (this.match(TokenType.LBRACKET)) {
+            const constraint = this.parseType();
+            this.consume(TokenType.RBRACKET, "Expected ']' after constraint");
+            return { kind: 'dynamic', constraint };
+          }
+          return { kind: 'dynamic' };
+        
+        case 'any':
+          return { kind: 'any' };
+        
+        case 'never':
+          return { kind: 'never' };
+        
+        default:
+          return { kind: 'any' };
+      }
+    } else {
+      // For union types using pipe operator (a | b), we'd need more complex parsing
+      // For now, just return any
+      return { kind: 'any' };
     }
+  }
+
+  // Helper method to look ahead more than one token
+  private getTokenAfterAhead(tokenType: TokenType): boolean {
+    const saved = this.current;
+    this.advance();
+    const result = this.check(tokenType);
+    this.current = saved;
+    return result;
   }
 
   private isStartOfPrimary(): boolean {
