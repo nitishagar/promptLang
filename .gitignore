@@ -1,0 +1,5 @@
+.aider*
+.claude/
+dist/
+functional_docs/
+node_modules/
