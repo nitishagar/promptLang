@@ -94,11 +94,14 @@ export class Parser {
       return this.parseTemplate();
     }
 
-    // Lambda expression
-    if (this.match(TokenType.LPAREN)) {
-      if (this.check(TokenType.IDENTIFIER) && this.peekAhead(TokenType.COLON)) {
+    // Lambda expression or grouped expression
+    if (this.check(TokenType.LPAREN)) {
+      // Look ahead to determine if this is a lambda: (identifier: or (identifier,  or (identifier)
+      if (this.isLambdaExpression()) {
+        this.advance(); // consume '('
         return this.parseLambda();
       }
+      this.advance(); // consume '('
       const expr = this.parseExpression();
       this.consume(TokenType.RPAREN, "Expected ')' after expression");
       return expr;
@@ -393,6 +396,61 @@ export class Parser {
     const result = this.check(type);
     this.current = saved;
     return result;
+  }
+
+  private isLambdaExpression(): boolean {
+    // This is a lookahead only - don't consume any tokens
+    // We need to save the entire lexer state, not just current
+    // For simplicity, we'll do a heuristic check without consuming
+
+    if (!this.check(TokenType.LPAREN)) {
+      return false;
+    }
+
+    // Look ahead in the input to detect lambda pattern
+    // Pattern: (id:type) -> or (id, id) -> or (id) -> or () ->
+
+    // We use a simple saved position approach
+    const savedPosition = this.lexer['position'];
+    const savedLine = this.lexer['line'];
+    const savedColumn = this.lexer['column'];
+    const savedCurrent = this.current;
+
+    try {
+      this.advance(); // consume (
+
+      // Empty params: () ->
+      if (this.check(TokenType.RPAREN)) {
+        this.advance();
+        const result = this.check(TokenType.ARROW);
+        return result;
+      }
+
+      // Must have identifier
+      if (!this.check(TokenType.IDENTIFIER)) {
+        return false;
+      }
+
+      this.advance(); // consume identifier
+
+      // Check if followed by :, , or ) ->
+      if (this.check(TokenType.COLON) || this.check(TokenType.COMMA)) {
+        return true;
+      }
+
+      if (this.check(TokenType.RPAREN)) {
+        this.advance();
+        return this.check(TokenType.ARROW);
+      }
+
+      return false;
+    } finally {
+      // Restore lexer state
+      this.lexer['position'] = savedPosition;
+      this.lexer['line'] = savedLine;
+      this.lexer['column'] = savedColumn;
+      this.current = savedCurrent;
+    }
   }
 
   private advance(): Token {
